@@ -1,72 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="cybercore-tech">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#05070b">
-  <title>Cyberfeed — High-performance terminal RSS & Atom reader</title>
-  <meta name="description" content="Cyberfeed is a high-performance, CLI-first RSS/Atom reader built in Rust, optimized for terminal workflows, tabbed feed navigation, syntax highlighting, and 312+ Cybercore themes.">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Cybercore Tech — schema-driven systems for the dark edge.">
+  <title>Cybercore Tech — Systems for the dark edge</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="bar">
-    <a class="wordmark" href="#top" aria-label="Cyberfeed home">
-      <span>CYBERFEED</span>
-    </a>
-    <div class="theme-bar-controls">
-      <button class="theme-bar-btn" id="btnThemes" type="button"><kbd>T</kbd> themes</button>
-      <button class="theme-bar-btn" id="btnRandom" type="button"><kbd>R</kbd> random</button>
-      <button class="theme-bar-btn" id="btnPrev" type="button">[</button>
-      <button class="theme-bar-btn" id="btnNext" type="button">]</button>
-      <span class="theme-bar-label">cycle</span>
-      <span class="konami">↑↑↓↓←→←→BA</span>
-    </div>
-    <a class="bar-gh" href="https://github.com/cybercoretech/cyberfeed" target="_blank" rel="noopener">GitHub ↗</a>
+  <header class="site-header">
+    <a class="brand" href="#top" data-brand-phase="0" aria-label="Cybercore Tech home"><span class="brand-emblem">CC</span><span class="brand-name">CYBERCORE <b>/</b> TECH</span></a>
+    <nav class="main-nav" aria-label="Primary navigation"><a href="#framework">FRAMEWORK</a><a href="#systems">SYSTEMS</a><a href="#themes">THEMES</a><a href="#connect">CONNECT</a></nav>
+    <div class="theme-picker"><span class="theme-label">THEME</span><button id="themeButton" class="theme-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="themeMenu">LOADING THEMES…</button><div id="themeMenu" class="theme-menu" role="listbox" aria-label="Choose a Cybercore theme" hidden></div><select id="themeSelect" aria-hidden="true" tabindex="-1"><option>LOADING THEMES…</option></select></div>
   </header>
 
-  <main id="main">
-    <section class="hero" id="top">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="dot"></span>cybercore / cyberfeed · terminal rss reader</p>
-        <h1>Lightning-fast feeds. Built in <em>Rust.</em></h1>
-        <p class="lede">Optimized for rapid terminal workflows, tabbed feed navigation, syntax-highlighted markdown article reading, and 312+ Cybercore themes.</p>
-        <div class="cta">
-          <a class="btn btn-primary" href="#themes">▶ explore 312+ themes</a>
-          <a class="btn btn-ghost" href="https://github.com/cybercoretech/cyberfeed" target="_blank" rel="noopener">$ clone repository</a>
-        </div>
-      </div>
-      <div class="hero-term">
-        <div class="term-head"><span>terminal</span><strong>active</strong></div>
-        <div class="term-body">
-          <code>$ cargo build --release</code>
-          <code>$ ./target/release/cyberfeed</code>
-          <p class="term-output">→ Loaded 4 feeds (Tokio + Reqwest async)</p>
-          <p class="term-output">→ Rusqlite FTS5 cache initialized</p>
-        </div>
-      </div>
+  <main id="top">
+    <section class="hero" id="framework">
+      <div class="hero-copy"><p class="eyebrow">◆ CYBERCORE SYSTEMS FRAMEWORK</p><h1>Build for the<br><em>dark edge.</em></h1><p class="lede">Rust-first tools, security systems, Omarchy surfaces, and operator workflows built around one shared source of truth.</p><div class="actions"><a class="button primary" href="#systems">EXPLORE SYSTEMS ↓</a><a class="button" href="https://github.com/cybercoretech" target="_blank" rel="noreferrer">OPEN THE ORG ↗</a></div><p class="signal"><i></i> SCHEMA ONLINE <b>—</b> RUST / LINUX / OMARCHY</p></div>
+      <div class="console"><div class="console-head"><span>● ● ● &nbsp; cybergrid / schema.v2</span><strong>ACTIVE</strong></div><div class="console-body"><p class="console-kicker">THE SHARED SURFACE</p><h2>One core.<br><span>Many systems.</span></h2><div class="graph"><div class="core">CYBER<br>CORE</div><div class="nodes"><b>SCHEMA</b><b>TOKENS</b><b>PATHS</b></div><div class="nodes pink"><b>AGENTS</b><b>SECURITY</b><b>OMARCHY</b></div></div><div class="console-foot"><span>schema_version <b id="schemaVersion">2</b></span><span>themes <b id="themeCount">Loading…</b></span><span>systems <b>05 CORE</b></span></div></div></div>
     </section>
 
-    <section class="section" id="themes">
-      <div class="section-head">
-        <h2>Cybercore Theme Matrix</h2>
-        <p>Switch instantly between 312+ Cybercore themes.</p>
-      </div>
-      <div class="controls">
-        <input id="search" type="search" placeholder="Search themes or families…">
-        <select id="family"><option value="">All families</option></select>
-      </div>
-      <div id="count" class="count"></div>
-      <div id="grid" class="grid"></div>
-    </section>
+    <section class="section" id="systems"><div class="section-head"><p class="eyebrow">01 / CORE REPOSITORIES</p><h2>The systems<br><em>in the grid.</em></h2><p>Five repositories define the first Cybercore Tech migration surface. Holodrive brings those shared themes into a self-hosted photo and file cloud.</p></div><div class="repo-grid">
+      <a class="repo cyan" href="https://github.com/cybercoretech/cybercore" target="_blank" rel="noreferrer"><span>01 / FOUNDATION</span><h3>CYBERCORE</h3><p>Shared schemas, themes, design tokens, and canonical paths.</p><b>RUST / JSON · 0.8.1 · 254 THEMES ↗</b></a>
+      <a class="repo pink" href="https://github.com/cybercoretech/cyberdeck" target="_blank" rel="noreferrer"><span>02 / OPERATOR SURFACE</span><h3>CYBERDECK</h3><p>Desktop and workflow surfaces for focused Omarchy operation.</p><b>RUST / QML · DESKTOP ↗</b></a>
+      <a class="repo acid" href="https://github.com/cybercoretech/cybermeta" target="_blank" rel="noreferrer"><span>03 / KNOWLEDGE LAYER</span><h3>CYBERMETA</h3><p>Metadata, project indexing, and the connective tissue around the grid.</p><b>JSON / MARKDOWN · INDEXED ↗</b></a>
+      <a class="repo orange" href="https://github.com/cybercoretech/cyberplug" target="_blank" rel="noreferrer"><span>04 / DISTRIBUTION</span><h3>CYBERPLUG</h3><p>Omarchy plugin distribution and integration tooling.</p><b>SHELL / RUST · OMARCHY ↗</b></a>
+      <a class="repo purple" href="https://github.com/cybercoretech/cyberterm" target="_blank" rel="noreferrer"><span>05 / TERMINAL SURFACE</span><h3>CYBERTERM</h3><p>Terminal-first operator tooling with clean machine-readable output.</p><b>RUST / CLI · TOOLING ↗</b></a>
+      <a class="repo cyan" href="holodrive/"><span>06 / PRIVATE CLOUD</span><h3>HOLODRIVE</h3><p>A self-hosted library for browsing, organizing, and sharing photos and files.</p><b>RUST / WEB / ANDROID · PHOTOS + FILES ↗</b></a>
+    </div><div class="discovered-wrap"><div class="live-title"><span><i class="live-dot"></i> LIVE DISCOVERY / PUBLIC REPOSITORIES</span><small id="repoSyncStatus">WAITING FOR FIRST SYNC</small></div><div class="discovered-grid" id="discoveredRepos"><p class="live-empty">The organization surface will appear here when the public GitHub registry responds.</p></div></div><div class="live-stats-panel"><div class="live-panel-head"><div><p class="eyebrow">LIVE STATS / ORG REGISTRY</p><h3>Signal from the<br><em>repository grid.</em></h3></div><div class="live-actions"><span id="repoCount">0 REPOSITORIES</span><button id="refreshRepos" type="button">SYNC NOW ↻</button></div></div><div class="live-stat-grid" id="liveStats"><p class="live-empty">Connecting to the Cybercore Tech repository registry…</p></div></div></section>
+
+    <section class="section theme-section" id="themes"><div class="section-head"><p class="eyebrow">02 / THEME MATRIX</p><h2>Choose your<br><em>signal.</em></h2><p>Explore all 254 Cybercore themes across 24 curated families, plus the Cybercore Tech master mix. Cybercore 0.8.1 brings quality and compatibility checks, reusable design tokens, editable themes, governed packs, and three selectable CyberDark wallpaper options per theme.</p></div><div class="theme-panel"><div><strong id="activeTheme">CYBERCORE TECH</strong><small>ACTIVE THEME</small></div><div class="swatches" id="swatches"></div><span class="theme-count" id="themeSummary">Loading theme catalog…</span><a class="button" href="https://github.com/cybercoretech/cybercore/tree/main/theme-studio" target="_blank" rel="noreferrer">EXPLORE THEME STUDIO ↗</a></div><div class="install-panel"><div class="install-copy"><p class="eyebrow">CYBERCORE 0.8.1 / CONTROL PLANE</p><h3>Govern the whole surface.</h3><p>The Control Plane now inventories 287 governed resources across themes, effects, components, snippets, assets, and packs, with Theme Studio previews and validation built in.</p><a href="https://cybercoretech.github.io/cybercore/" target="_blank" rel="noreferrer">OPEN THE CONTROL PLANE ↗</a></div><div class="install-command"><span>MODULAR RUST CRATES / CRATES.IO</span><code>cargo add cybercore-core cybercore-effects cybercore-components</code><a href="https://crates.io/crates/cybercore-core">VIEW THE CORE CRATE ↗</a><small>Publishing contracts: <a href="https://crates.io/crates/cybercore-publish">cybercore-publish</a> · <a href="https://github.com/cybercoretech/cybercore/tree/main/packs">governed packs</a></small></div></div></section>
+
+    <section class="section connect" id="connect"><div><p class="eyebrow">03 / OPEN SIGNAL</p><h2>Stay close<br>to <em>the source.</em></h2><p>Browse the repositories, inspect the schema, or connect with Cybercore Tech about a system that needs a sharper surface.</p></div><cybercore-contact class="contact-block"><a href="mailto:dev@cybercoretech.net">dev@cybercoretech.net</a></cybercore-contact></section>
   </main>
-
-  <aside id="preview" class="preview" hidden></aside>
-
-  <!-- Universal Cybercore Footer Component -->
-  <cybercore-contact></cybercore-contact>
-
-  <script src="site.js"></script>
+  <footer><span>CYBERCORE TECH / HUMAN-TESTED SYSTEMS / PUBLIC SOURCE / MIT</span><span class="thanks-links">WITH THANKS TO <a href="https://omarchy.org/">OMARCHY</a> · <a href="https://www.rust-lang.org/">RUST</a> · <a href="https://www.kernel.org/">LINUX</a> · <a href="https://archlinux.org/">ARCH</a> · <a href="https://quickshell.org/">QUICKSHELL</a> · <a href="https://www.lua.org/">LUA</a></span></footer>
+  <script src="app.js"></script>
   <script type="module" src="kit/contact.js"></script>
 </body>
 </html>
