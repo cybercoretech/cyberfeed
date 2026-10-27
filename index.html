@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#05070b">
+  <title>Cyberfeed — High-performance terminal RSS & Atom reader</title>
+  <meta name="description" content="Cyberfeed is a high-performance, CLI-first RSS/Atom reader built in Rust, optimized for terminal workflows, tabbed feed navigation, syntax highlighting, and 312+ Cybercore themes.">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="wordmark" href="#top" aria-label="Cyberfeed home">
+      <span>CYBERFEED</span>
+    </a>
+    <div class="theme-bar-controls">
+      <button class="theme-bar-btn" id="btnThemes" type="button"><kbd>T</kbd> themes</button>
+      <button class="theme-bar-btn" id="btnRandom" type="button"><kbd>R</kbd> random</button>
+      <button class="theme-bar-btn" id="btnPrev" type="button">[</button>
+      <button class="theme-bar-btn" id="btnNext" type="button">]</button>
+      <span class="theme-bar-label">cycle</span>
+      <span class="konami">↑↑↓↓←→←→BA</span>
+    </div>
+    <a class="bar-gh" href="https://github.com/cybercoretech/cyberfeed" target="_blank" rel="noopener">GitHub ↗</a>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot"></span>cybercore / cyberfeed · terminal rss reader</p>
+        <h1>Lightning-fast feeds. Built in <em>Rust.</em></h1>
+        <p class="lede">Optimized for rapid terminal workflows, tabbed feed navigation, syntax-highlighted markdown article reading, and 312+ Cybercore themes.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="#themes">▶ explore 312+ themes</a>
+          <a class="btn btn-ghost" href="https://github.com/cybercoretech/cyberfeed" target="_blank" rel="noopener">$ clone repository</a>
+        </div>
+      </div>
+      <div class="hero-term">
+        <div class="term-head"><span>terminal</span><strong>active</strong></div>
+        <div class="term-body">
+          <code>$ cargo build --release</code>
+          <code>$ ./target/release/cyberfeed</code>
+          <p class="term-output">→ Loaded 4 feeds (Tokio + Reqwest async)</p>
+          <p class="term-output">→ Rusqlite FTS5 cache initialized</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="themes">
+      <div class="section-head">
+        <h2>Cybercore Theme Matrix</h2>
+        <p>Switch instantly between 312+ Cybercore themes.</p>
+      </div>
+      <div class="controls">
+        <input id="search" type="search" placeholder="Search themes or families…">
+        <select id="family"><option value="">All families</option></select>
+      </div>
+      <div id="count" class="count"></div>
+      <div id="grid" class="grid"></div>
+    </section>
+  </main>
+
+  <aside id="preview" class="preview" hidden></aside>
+
+  <!-- Universal Cybercore Footer Component -->
+  <cybercore-contact></cybercore-contact>
+
+  <script src="site.js"></script>
+  <script type="module" src="kit/contact.js"></script>
+</body>
+</html>
