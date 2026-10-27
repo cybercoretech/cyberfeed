@@ -1,37 +1,23 @@
-const colors = ["bg", "panel", "line", "acid_green", "cyan", "purple", "hot_pink"];
-const grid = document.querySelector("#grid"), count = document.querySelector("#count"), search = document.querySelector("#search"), family = document.querySelector("#family"), preview = document.querySelector("#preview");
-let themes = [];
+const root=document.documentElement;const select=document.querySelector('#themeSelect');const active=document.querySelector('#activeTheme');const swatches=document.querySelector('#swatches');let schema;let cache={};const labels={'cybercore-tech':'CYBERCORE TECH / MASTER MIX',cyberdyne:'CYBERDYNE',cyberpunk:'CYBERPUNK',default:'DEFAULT / CLASSICS',dystopian:'DYSTOPIAN',neosynth:'NEOSYNTH',synthwave:'SYNTHWAVE','omarchy-live':'OMARCHY LIVE'};const display=s=>s.replaceAll('-',' ').toUpperCase();
+function apply(name,palette){const map={bg:'--bg',white:'--white',acid_green:'--acid',hot_pink:'--pink',purple:'--purple',cyan:'--cyan',orange:'--orange',panel:'--panel',line:'--line',muted:'--muted'};Object.entries(map).forEach(([key,varName])=>root.style.setProperty(varName,`#${palette[key]}`));active.textContent=display(name);swatches.innerHTML=['acid_green','hot_pink','purple','cyan','orange','red'].map(k=>`<i title="${k}" style="background:#${palette[k]}"></i>`).join('');select.value=name;root.dataset.theme=name;localStorage.setItem('cybercore-theme',name);if(typeof syncThemeMenu==='function')syncThemeMenu()}
+async function palette(name,family){if(cache[name])return cache[name];const response=await fetch(`data/themes/${family}/${name}.json`);cache[name]=await response.json();return cache[name]}
+async function boot(){schema=await (await fetch('data/cybergrid.json')).json();Object.entries(schema.families).forEach(([family,names])=>{const group=document.createElement('optgroup');group.label=labels[family]||family.toUpperCase();names.forEach(name=>{const option=document.createElement('option');option.value=name;option.textContent=display(name);option.dataset.family=family;group.append(option)});select.append(group)});const requested=new URLSearchParams(location.search).get('theme');const saved=localStorage.getItem('cybercore-theme');const name=schema.families[Object.keys(schema.families).find(f=>schema.families[f].includes(requested||saved||schema.active))]?.includes(requested||saved||schema.active)?(requested||saved||schema.active):schema.active;const family=Object.keys(schema.families).find(f=>schema.families[f].includes(name));apply(name,await palette(name,family));document.querySelector('#schemaVersion').textContent=schema.schema_version;const sourceFamilies=Object.entries(schema.families).filter(([family])=>family!=='cybercore-tech');const sourceCount=sourceFamilies.reduce((sum,[,names])=>sum+names.length,0);document.querySelector('#themeCount').textContent=sourceCount+' + 1';document.querySelector('#themeSummary').textContent=`${sourceCount} SOURCE THEMES / ${sourceFamilies.length} FAMILIES / 1 MASTER MIX`}
+select.addEventListener('change',async()=>{const name=select.value;const family=select.selectedOptions[0].parentElement.label;const key=Object.keys(labels).find(k=>labels[k]===family)||Object.keys(schema.families).find(f=>schema.families[f].includes(name));apply(name,await palette(name,key));history.replaceState(null,'',`?theme=${name}`)});boot().catch(error=>{console.error(error);select.innerHTML='<option>SCHEMA OFFLINE</option>'});
+const brand=document.querySelector('.brand');if(!matchMedia('(prefers-reduced-motion:reduce)').matches){let phase=0;setInterval(()=>{phase=(phase+1+Math.floor(Math.random()*5))%6;brand.dataset.brandPhase=phase},4700)}window.addEventListener('pointermove',e=>{root.style.setProperty('--x',`${e.clientX}px`);root.style.setProperty('--y',`${e.clientY}px`)},{passive:true});
 
-const esc = value => String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+const ORG='cybercoretech';const coreRepos=['cybercore','cyberdeck','cybermeta','cyberplug','cyberterm'];const syncStatus=document.querySelector('#repoSyncStatus');const repoCount=document.querySelector('#repoCount');const discovered=document.querySelector('#discoveredRepos');const liveStats=document.querySelector('#liveStats');const refreshButton=document.querySelector('#refreshRepos');
+const safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const since=date=>{const seconds=Math.max(1,Math.floor((Date.now()-new Date(date).getTime())/1000));if(seconds<60)return `${seconds}S AGO`;const minutes=Math.floor(seconds/60);if(minutes<60)return `${minutes}M AGO`;const hours=Math.floor(minutes/60);if(hours<48)return `${hours}H AGO`;return `${Math.floor(hours/24)}D AGO`};
+function orderedRepos(repos){return [...repos].sort((a,b)=>{const ai=coreRepos.indexOf(a.name),bi=coreRepos.indexOf(b.name);if(ai>=0||bi>=0)return (ai<0?99:ai)-(bi<0?99:bi);return new Date(b.updated_at)-new Date(a.updated_at)})}
+function renderDiscovered(repos){const extra=repos.filter(repo=>!coreRepos.includes(repo.name));discovered.innerHTML=extra.length?extra.map(repo=>`<a class="discovered-repo" href="${safe(repo.html_url)}" target="_blank" rel="noreferrer"><strong>${safe(repo.name).toUpperCase()}</strong><small>${safe(repo.description||'New Cybercore Tech repository surface.')}</small><b>${safe(repo.language||'MULTI-LANGUAGE')} · ${since(repo.updated_at)}</b></a>`).join(''):'<p class="live-empty">No additional public repositories discovered yet. New organization repositories will appear here automatically.</p>'}
+function renderLiveStats(repos){liveStats.innerHTML=repos.length?orderedRepos(repos).map(repo=>`<article class="live-stat-card"><div class="live-meta"><span>${safe(repo.visibility||'public').toUpperCase()} / ${safe(repo.language||'MULTI').toUpperCase()}</span><strong>${since(repo.pushed_at||repo.updated_at)}</strong></div><a href="${safe(repo.html_url)}" target="_blank" rel="noreferrer">${safe(repo.name).toUpperCase()} ↗</a><p class="repo-desc">${safe(repo.description||'No repository description published yet.')}</p><div class="stat-line"><span><b>${repo.stargazers_count??0}</b>STARS</span><span><b>${repo.forks_count??0}</b>FORKS</span><span><b>${repo.open_issues_count??0}</b>ISSUES</span></div></article>`).join(''):'<p class="live-empty">No public repositories returned.</p>';repoCount.textContent=`${repos.length} PUBLIC REPOSITORIES`}
+async function loadLiveRepos(){syncStatus.textContent='SYNCING GITHUB REGISTRY…';refreshButton.disabled=true;try{const response=await fetch(`https://api.github.com/orgs/${ORG}/repos?type=public&sort=updated&per_page=100`,{headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}});if(!response.ok)throw new Error(`GitHub API ${response.status}`);const repos=(await response.json()).filter(repo=>!repo.private&&!repo.archived);renderDiscovered(repos);renderLiveStats(repos);syncStatus.textContent=`SYNCED ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`}catch(error){syncStatus.textContent='REGISTRY UNAVAILABLE';if(!liveStats.children.length||liveStats.querySelector('.live-empty'))liveStats.innerHTML=`<p class="live-empty">Live registry unavailable: ${safe(error.message)}. The curated Cybercore surface remains available.</p>`}finally{refreshButton.disabled=false}}
+refreshButton.addEventListener('click',loadLiveRepos);loadLiveRepos();setInterval(loadLiveRepos,300000);
 
-function swatches(theme, className = "swatches") {
-  return `<div class="${className}">${colors.map(key => theme.colors[key] ? `<i style="--c:#${esc(theme.colors[key])}" title="${key}"></i>` : "").join("")}</div>`;
-}
-
-function render() {
-  const query = search.value.trim().toLowerCase(), selected = family.value;
-  const visible = themes.filter(theme => (!selected || theme.family === selected) && (!query || `${theme.name} ${theme.family} ${theme.id}`.toLowerCase().includes(query)));
-  count.textContent = `${visible.length} THEMES · ${new Set(visible.map(theme => theme.family)).size} FAMILIES`;
-  grid.innerHTML = visible.map(theme => `<article class="theme" data-id="${esc(theme.id)}"><div class="theme-head"><span class="theme-family">${esc(theme.family)}</span><span class="theme-id">${esc(theme.id)}</span></div><h2>${esc(theme.name)}</h2>${swatches(theme)}</article>`).join("") || "<p>No public themes match that search.</p>";
-  grid.querySelectorAll(".theme").forEach(card => card.addEventListener("click", () => select(card.dataset.id)));
-}
-
-function select(id) {
-  const theme = themes.find(item => item.id === id);
-  if (!theme) return;
-  grid.querySelectorAll(".theme").forEach(card => card.classList.toggle("selected", card.dataset.id === id));
-  preview.hidden = false;
-  preview.innerHTML = `<h2>${esc(theme.name)}</h2><p>${esc(theme.family)} · <span class="theme-id">${esc(theme.id)}</span></p>${swatches(theme, "preview-swatches")}`;
-}
-
-fetch("../docs/theme-chooser-data.json")
-  .then(response => { if (!response.ok) throw new Error("Theme catalog unavailable"); return response.json(); })
-  .then(data => {
-    themes = data.themes;
-    [...new Set(themes.map(theme => theme.family))].sort().forEach(name => family.insertAdjacentHTML("beforeend", `<option value="${esc(name)}">${esc(name)}</option>`));
-    render();
-  })
-  .catch(error => { count.textContent = error.message; });
-
-search.addEventListener("input", render);
-family.addEventListener("change", render);
+/* Replace the platform-native theme popup with a consistently dark menu. */
+const themeButton=document.querySelector('#themeButton');const themeMenu=document.querySelector('#themeMenu');
+function closeThemeMenu(){themeMenu.hidden=true;themeButton.setAttribute('aria-expanded','false')}
+function syncThemeMenu(){const selected=select.selectedOptions[0];themeButton.textContent=selected?.textContent||'LOADING THEMES…';themeMenu.querySelectorAll('.theme-option').forEach(option=>option.setAttribute('aria-selected',String(option.dataset.value===select.value)))}
+function rebuildThemeMenu(){themeMenu.innerHTML='';select.querySelectorAll('optgroup').forEach(group=>{const heading=document.createElement('div');heading.className='theme-group-label';heading.textContent=group.label;themeMenu.append(heading);group.querySelectorAll('option').forEach(source=>{const option=document.createElement('button');option.type='button';option.className='theme-option';option.setAttribute('role','option');option.dataset.value=source.value;option.dataset.family=source.dataset.family||'';option.textContent=source.textContent;option.addEventListener('click',()=>{select.value=source.value;select.dispatchEvent(new Event('change',{bubbles:true}));closeThemeMenu();themeButton.focus()});themeMenu.append(option)})});syncThemeMenu()}
+select.addEventListener('change',syncThemeMenu);new MutationObserver(rebuildThemeMenu).observe(select,{childList:true,subtree:true});rebuildThemeMenu();
+themeButton.addEventListener('click',()=>{const opening=themeMenu.hidden;themeMenu.hidden=!opening;themeButton.setAttribute('aria-expanded',String(opening));if(opening)themeMenu.querySelector('[aria-selected="true"]')?.focus()});document.addEventListener('pointerdown',event=>{if(!event.target.closest('.theme-picker'))closeThemeMenu()});document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!themeMenu.hidden){closeThemeMenu();themeButton.focus()}});
