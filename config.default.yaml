@@ -1,0 +1,74 @@
+# Cyberfeed Configuration File (~/.config/cyberfeed/config.yaml)
+# refresh_interval_minutes: 30 is the default and recommended balance.
+# Use 15 for faster updates on high-activity feeds, or 60 to conserve bandwidth.
+
+refresh_interval_minutes: 30
+auto_prune_days: 30
+theme: "catppuccin-mocha"
+browser: "xdg-open"
+
+categories:
+  - name: "Omarchy & Official Distro News"
+    feeds:
+      - name: "Omarchy Official News"
+        url: "https://omarchy.org/news/index.xml"
+      - name: "Arch Linux News"
+        url: "https://archlinux.org/feeds/news/"
+      - name: "Arch Linux Package Updates"
+        url: "https://archlinux.org/feeds/packages/"
+      - name: "AUR Newest Packages"
+        url: "https://archlinux.org/feeds/aur/updates/"
+      - name: "DistroWatch Releases"
+        url: "https://distrowatch.com/news/dw.xml"
+
+  - name: "Kernel, Hardware & Systems"
+    feeds:
+      - name: "LWN.net Technical News"
+        url: "https://lwn.net/headlines/newrss"
+      - name: "Phoronix Graphics & Benchmarks"
+        url: "https://phoronix.com/rss.php"
+      - name: "Kernel.org Releases"
+        url: "https://www.kernel.org/feeds/kdist.xml"
+      - name: "LWN Free Articles"
+        url: "https://lwn.net/headlines/rss"
+
+  - name: "Tiling & Wayland Ecosystem"
+    feeds:
+      - name: "Hyprland Releases"
+        url: "https://github.com/hyprwm/Hyprland/releases.atom"
+      - name: "Hyprland Commits"
+        url: "https://github.com/hyprwm/Hyprland/commits.atom"
+      - name: "Quickshell Commits"
+        url: "https://github.com/outfoxxed/quickshell/commits.atom"
+      - name: "r/hyprland Subreddit"
+        url: "https://www.reddit.com/r/hyprland/.rss"
+      - name: "r/unixporn Quickshell Posts"
+        url: "https://www.reddit.com/r/unixporn/search.rss?q=quickshell&restrict_sr=1"
+
+  - name: "Desktop Environments & UI Design"
+    feeds:
+      - name: "Planet GNOME"
+        url: "https://planet.gnome.org/rss20.xml"
+      - name: "KDE Dot News"
+        url: "https://dot.kde.org/rss.xml"
+      - name: "OMG! Ubuntu!"
+        url: "https://omgubuntu.co.uk/feed"
+
+  - name: "Terminal, CLI & Coding"
+    feeds:
+      - name: "CommandLineFu Top Commands"
+        url: "https://commandlinefu.com/rss"
+      - name: "nixCraft (CyberCiti)"
+        url: "https://cyberciti.biz/feed/"
+      - name: "TecMint"
+        url: "https://www.tecmint.com/feed/"
+      - name: "It's F.O.S.S."
+        url: "https://itsfoss.com/rss/"
+      - name: "9to5Linux"
+        url: "https://9to5linux.com/feed"
+      - name: "Hacker News"
+        url: "https://news.ycombinator.com/rss"
+      - name: "Rust Language Blog"
+        url: "https://blog.rust-lang.org/feed.xml"
+      - name: "Fasterthanli.me"
+        url: "https://fasterthanli.me/index.xml"

@@ -1,0 +1,29 @@
+[package]
+name = "cyberfeed"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# TUI Framework & Utilities
+ratatui = "0.29"
+crossterm = "0.28"
+arboard = "3.4"
+
+# Async Runtime & Networking
+tokio = { version = "1.38", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Feed Parsing
+rss = "2.0"
+atom_syndication = "0.12"
+
+# Storage & Configuration (fts5 included automatically via bundled)
+rusqlite = { version = "0.31", features = ["bundled"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+dirs = "5.0"
+
+# Error Handling & Utilities
+anyhow = "1.0"
+open = "5.3"
+chrono = { version = "0.4", features = ["serde"] }

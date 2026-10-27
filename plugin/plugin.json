@@ -1,0 +1,7 @@
+{
+  "id": "cybercore.cyberfeed",
+  "name": "Cyberfeed RSS Reader",
+  "kinds": ["bar-widget", "panel"],
+  "version": "1.0.0",
+  "description": "High-performance Rust RSS reader TUI"
+}
