@@ -51,7 +51,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-                - name: Run GitHub Integration Task
+      - name: Run GitHub Integration Task
         env:
           GITHUB_TOKEN: ${{ secrets.CYBERFEED_GITHUB_TOKEN }}
         run: cargo run --bin sync-github
