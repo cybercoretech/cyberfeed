@@ -35,7 +35,7 @@ impl Config {
         let config_dir = dirs::config_dir()
             .map(|d| d.join("cyberfeed"))
             .unwrap_or_else(|| PathBuf::from("."));
-        
+
         let config_path = config_dir.join("config.yaml");
 
         if config_path.exists() {

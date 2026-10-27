@@ -1,3 +1,11 @@
+use crate::config::ThemeName;
+use crate::db::{Article, Database};
+use crossterm::{
+    event::{self, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use pulldown_cmark::{Event as MarkdownEvent, Parser, Tag, TagEnd};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
@@ -6,15 +14,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs},
     Frame, Terminal,
 };
-use crossterm::{
-    event::{self, Event, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
 use std::io;
-use crate::config::ThemeName;
-use crate::db::{Database, Article};
-use pulldown_cmark::{Parser, Tag, TagEnd, Event as MarkdownEvent};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewMode {
@@ -140,7 +140,10 @@ impl App {
             self.articles.iter().collect()
         } else {
             let feed_name = &self.feed_names[self.selected_tab];
-            self.articles.iter().filter(|a| &a.source == feed_name).collect()
+            self.articles
+                .iter()
+                .filter(|a| &a.source == feed_name)
+                .collect()
         }
     }
 
@@ -209,14 +212,35 @@ fn load_cybercore_themes() -> Vec<ThemeItem> {
             if let Some(arr) = v.get("themes").and_then(|t| t.as_array()) {
                 let mut list = Vec::new();
                 for item in arr {
-                    let id = item.get("id").and_then(|s| s.as_str()).unwrap_or("theme").to_string();
-                    let name = item.get("name").and_then(|s| s.as_str()).unwrap_or("Theme").to_string();
-                    let family = item.get("family").and_then(|s| s.as_str()).unwrap_or("general").to_string();
+                    let id = item
+                        .get("id")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("theme")
+                        .to_string();
+                    let name = item
+                        .get("name")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("Theme")
+                        .to_string();
+                    let family = item
+                        .get("family")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("general")
+                        .to_string();
                     let colors = item.get("colors");
-                    let bg_hex = colors.and_then(|c| c.get("bg")).and_then(|s| s.as_str()).unwrap_or("050710");
-                    let cyan_hex = colors.and_then(|c| c.get("cyan")).and_then(|s| s.as_str()).unwrap_or("22e6ff");
-                    let acid_hex = colors.and_then(|c| c.get("acid_green")).and_then(|s| s.as_str()).unwrap_or("c6ff45");
-                    
+                    let bg_hex = colors
+                        .and_then(|c| c.get("bg"))
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("050710");
+                    let cyan_hex = colors
+                        .and_then(|c| c.get("cyan"))
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("22e6ff");
+                    let acid_hex = colors
+                        .and_then(|c| c.get("acid_green"))
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("c6ff45");
+
                     list.push(ThemeItem {
                         id,
                         name,
@@ -245,7 +269,7 @@ fn load_cybercore_themes() -> Vec<ThemeItem> {
 fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
     let parser = Parser::new(markdown);
-    
+
     let mut current_spans: Vec<Span<'static>> = Vec::new();
     let mut current_style = Style::default().fg(palette.text);
     let mut in_code_block = false;
@@ -253,7 +277,9 @@ fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Li
     for event in parser {
         match event {
             MarkdownEvent::Start(Tag::Heading { .. }) => {
-                current_style = Style::default().fg(palette.primary).add_modifier(Modifier::BOLD);
+                current_style = Style::default()
+                    .fg(palette.primary)
+                    .add_modifier(Modifier::BOLD);
             }
             MarkdownEvent::End(TagEnd::Heading { .. }) => {
                 lines.push(Line::from(current_spans));
@@ -265,7 +291,9 @@ fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Li
                 in_code_block = true;
                 lines.push(Line::from(current_spans));
                 current_spans = Vec::new();
-                current_style = Style::default().fg(palette.highlight).bg(palette.background);
+                current_style = Style::default()
+                    .fg(palette.highlight)
+                    .bg(palette.background);
             }
             MarkdownEvent::End(TagEnd::CodeBlock) => {
                 in_code_block = false;
@@ -290,7 +318,10 @@ fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Li
                 let text_str = text.to_string();
                 if in_code_block {
                     for line_str in text_str.lines() {
-                        lines.push(Line::from(Span::styled(format!("    {}", line_str), current_style)));
+                        lines.push(Line::from(Span::styled(
+                            format!("    {}", line_str),
+                            current_style,
+                        )));
                     }
                 } else {
                     for line_str in text_str.lines() {
@@ -298,8 +329,7 @@ fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Li
                     }
                 }
             }
-            MarkdownEvent::SoftBreak | MarkdownEvent::HardBreak
-                if !current_spans.is_empty() => {
+            MarkdownEvent::SoftBreak | MarkdownEvent::HardBreak if !current_spans.is_empty() => {
                 lines.push(Line::from(current_spans));
                 current_spans = Vec::new();
             }
@@ -310,7 +340,10 @@ fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Li
         lines.push(Line::from(current_spans));
     }
     if lines.is_empty() {
-        lines.push(Line::from(Span::styled(markdown.to_string(), Style::default().fg(palette.text))));
+        lines.push(Line::from(Span::styled(
+            markdown.to_string(),
+            Style::default().fg(palette.text),
+        )));
     }
     lines
 }
@@ -332,12 +365,25 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
         .split(f.area());
 
     // Tabs
-    let titles: Vec<Line> = app.feed_names.iter().map(|n| Line::from(n.as_str())).collect();
+    let titles: Vec<Line> = app
+        .feed_names
+        .iter()
+        .map(|n| Line::from(n.as_str()))
+        .collect();
     let tabs = Tabs::new(titles)
-        .block(Block::default().borders(Borders::ALL).title(" Feeds ").style(palette.block_style()))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Feeds ")
+                .style(palette.block_style()),
+        )
         .select(app.selected_tab)
         .style(Style::default().fg(palette.text))
-        .highlight_style(Style::default().fg(palette.highlight).add_modifier(Modifier::BOLD));
+        .highlight_style(
+            Style::default()
+                .fg(palette.highlight)
+                .add_modifier(Modifier::BOLD),
+        );
     f.render_widget(tabs, chunks[0]);
 
     // Content view
@@ -349,9 +395,17 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
                 .enumerate()
                 .map(|(i, article)| {
                     let prefix = if i == app.selected_index { "> " } else { "  " };
-                    let content = format!("{}{}[{}] {}", prefix, if article.read { "" } else { "● " }, article.source, article.title);
+                    let content = format!(
+                        "{}{}[{}] {}",
+                        prefix,
+                        if article.read { "" } else { "● " },
+                        article.source,
+                        article.title
+                    );
                     let style = if i == app.selected_index {
-                        Style::default().fg(palette.highlight).add_modifier(Modifier::BOLD)
+                        Style::default()
+                            .fg(palette.highlight)
+                            .add_modifier(Modifier::BOLD)
                     } else if article.read {
                         Style::default().fg(Color::DarkGray)
                     } else {
@@ -361,13 +415,20 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
                 })
                 .collect();
 
-            let list = List::new(items)
-                .block(Block::default().borders(Borders::ALL).title(" Articles ").style(palette.block_style()));
+            let list = List::new(items).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Articles ")
+                    .style(palette.block_style()),
+            );
             f.render_widget(list, chunks[1]);
         }
         ViewMode::Reader | ViewMode::ThemeChooser => {
             let content_lines = if let Some(article) = app.selected_article() {
-                let raw_md = format!("# {}\n\n**Source:** {}\n**Link:** {}\n\n---\n\n{}", article.title, article.source, article.link, article.content);
+                let raw_md = format!(
+                    "# {}\n\n**Source:** {}\n**Link:** {}\n\n---\n\n{}",
+                    article.title, article.source, article.link, article.content
+                );
                 render_markdown_highlighted(&raw_md, &palette)
             } else {
                 vec![Line::from("No article selected.")]
@@ -375,7 +436,12 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
 
             let paragraph = Paragraph::new(content_lines)
                 .style(Style::default().fg(palette.text).bg(palette.background))
-                .block(Block::default().borders(Borders::ALL).title(" Reader (Syntax Highlighted) ").style(palette.block_style()))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Reader (Syntax Highlighted) ")
+                        .style(palette.block_style()),
+                )
                 .wrap(ratatui::widgets::Wrap { trim: false });
             f.render_widget(paragraph, chunks[1]);
         }
@@ -386,8 +452,11 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
         ViewMode::List | ViewMode::ThemeChooser => " [Tab] Feed | [j/k] Nav | [Enter] Read | [t] Cybercore Themes (72+) | [o] Browser | [y] Copy | [r] Refresh | [q] Quit ",
         ViewMode::Reader => " [Esc/q] Back | [t] Cybercore Themes (72+) | [o] Browser | [y] Copy ",
     };
-    let status = Paragraph::new(status_text)
-        .style(Style::default().fg(palette.highlight).bg(palette.background));
+    let status = Paragraph::new(status_text).style(
+        Style::default()
+            .fg(palette.highlight)
+            .bg(palette.background),
+    );
     f.render_widget(status, chunks[2]);
 
     // Popup Theme Chooser
@@ -404,10 +473,16 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
             .enumerate()
             .map(|(idx, t)| {
                 let actual_idx = start + idx;
-                let prefix = if actual_idx == app.selected_theme_index { "> " } else { "  " };
+                let prefix = if actual_idx == app.selected_theme_index {
+                    "> "
+                } else {
+                    "  "
+                };
                 let content = format!("{}{}: {} [{}]", prefix, t.id, t.name, t.family);
                 let style = if actual_idx == app.selected_theme_index {
-                    Style::default().fg(palette.highlight).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(palette.highlight)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default().fg(palette.text)
                 };
@@ -415,9 +490,17 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
             })
             .collect();
 
-        let title = format!(" Select Cybercore Theme ({}/{}): [j/k] Nav, [Enter] Apply, [Esc] Close ", app.selected_theme_index + 1, app.themes.len());
-        let theme_list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title(title).style(palette.block_style()));
+        let title = format!(
+            " Select Cybercore Theme ({}/{}): [j/k] Nav, [Enter] Apply, [Esc] Close ",
+            app.selected_theme_index + 1,
+            app.themes.len()
+        );
+        let theme_list = List::new(items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .style(palette.block_style()),
+        );
         f.render_widget(theme_list, area);
     }
 }
@@ -515,11 +598,16 @@ pub async fn run_tui(mut app: App) -> anyhow::Result<()> {
                                 app.view_mode = ViewMode::List;
                             }
                             KeyCode::Char('j') | KeyCode::Down => {
-                                if !app.themes.is_empty() && app.selected_theme_index < app.themes.len() - 1 {
+                                if !app.themes.is_empty()
+                                    && app.selected_theme_index < app.themes.len() - 1
+                                {
                                     app.selected_theme_index += 1;
                                     let visible_height = 20;
-                                    if app.selected_theme_index >= app.theme_list_offset + visible_height {
-                                        app.theme_list_offset = app.selected_theme_index - visible_height + 1;
+                                    if app.selected_theme_index
+                                        >= app.theme_list_offset + visible_height
+                                    {
+                                        app.theme_list_offset =
+                                            app.selected_theme_index - visible_height + 1;
                                     }
                                 }
                             }

@@ -50,8 +50,3 @@ jobs:
         uses: rustsec/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run GitHub Integration Task
-        env:
-          GITHUB_TOKEN: ${{ secrets.CYBERFEED_GITHUB_TOKEN }}
-        run: cargo run --bin sync-github
