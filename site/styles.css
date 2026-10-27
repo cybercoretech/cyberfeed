@@ -118,22 +118,6 @@ main { max-width: var(--max); margin: 0 auto; padding: 40px var(--gutter); }
 .preview-swatches { display: flex; gap: 5px; margin-top: 12px; }
 .preview-swatches i { height: 32px; flex: 1; border-radius: 4px; background: var(--c); border: 1px solid rgba(255,255,255,0.2); }
 
-footer {
-  border-top: 1px solid var(--line); background: var(--panel); padding: 40px var(--gutter); font-size: 12px; color: var(--muted);
-}
-.footer-content { max-width: var(--max); margin: 0 auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
-.thanks-links a { color: var(--cyan); margin: 0 4px; }
-.footer-bottom { max-width: var(--max); margin: 20px auto 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.04); color: var(--white); }
-
-
-cybercore-contact {
-  display: block;
-  max-width: var(--max);
-  margin: 60px auto 0;
-  padding: 0 var(--gutter);
-}
-
-
 cybercore-contact {
   display: block;
   max-width: var(--max);
