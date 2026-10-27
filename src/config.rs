@@ -1,18 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeName {
+    #[default]
     Cyberpunk,
     Dracula,
     Nord,
-}
-
-impl Default for ThemeName {
-    fn default() -> Self {
-        Self::Cyberpunk
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

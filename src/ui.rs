@@ -33,6 +33,7 @@ pub struct ThemeItem {
     pub text: Color,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub struct ThemePalette {
     pub primary: Color,
@@ -297,11 +298,10 @@ fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Li
                     }
                 }
             }
-            MarkdownEvent::SoftBreak | MarkdownEvent::HardBreak => {
-                if !current_spans.is_empty() {
-                    lines.push(Line::from(current_spans));
-                    current_spans = Vec::new();
-                }
+            MarkdownEvent::SoftBreak | MarkdownEvent::HardBreak
+                if !current_spans.is_empty() => {
+                lines.push(Line::from(current_spans));
+                current_spans = Vec::new();
             }
             _ => {}
         }
