@@ -132,3 +132,11 @@ cybercore-contact {
   margin: 60px auto 0;
   padding: 0 var(--gutter);
 }
+
+
+cybercore-contact {
+  display: block;
+  max-width: var(--max);
+  margin: 60px auto 0;
+  padding: 0 var(--gutter);
+}
