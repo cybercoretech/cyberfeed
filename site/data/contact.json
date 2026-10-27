@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "updated": "2026-10-20",
+  "brand": {
+    "name": "CYBERCORE TECH",
+    "tagline": "Schema-driven systems for the dark edge",
+    "site": "https://cybercoretech.net/",
+    "signoff": "CYBERCORE TECH / HUMAN-TESTED SYSTEMS"
+  },
+  "home": {
+    "label": "Home base",
+    "title": "cybercoretech.net",
+    "url": "https://cybercoretech.net/",
+    "note": "The official Cybercore Tech website"
+  },
+  "email": {
+    "contact": {
+      "label": "Direct contact",
+      "address": "dev@cybercoretech.net",
+      "note": "cybercoretech.net / direct inbox"
+    },
+    "security": {
+      "label": "Security",
+      "address": "security@cybercoretech.net",
+      "note": "Vulnerability reports: please don't open a public issue"
+    },
+    "contributors": {
+      "label": "Contributors",
+      "address": "contributors@cybercoretech.net",
+      "note": "Open-source collaboration / private applications"
+    }
+  },
+  "team": {
+    "label": "Dev Team",
+    "url": "https://cybercoretech.net/dev-team/"
+  },
+  "channels": [
+    {
+      "id": "github",
+      "glyph": "GH",
+      "label": "GitHub",
+      "handle": "cybercoretech",
+      "url": "https://github.com/cybercoretech"
+    },
+    {
+      "id": "discord",
+      "glyph": "DC",
+      "label": "Discord",
+      "handle": "Cybercore",
+      "url": "https://discord.gg/vBMcK5wAx"
+    },
+    {
+      "id": "devto",
+      "glyph": "DV",
+      "label": "Dev.to",
+      "handle": "cybercore-tech",
+      "url": "https://dev.to/cybercore-tech"
+    },
+    {
+      "id": "reddit",
+      "glyph": "RD",
+      "label": "Reddit",
+      "handle": "cybercore_sh",
+      "url": "https://www.reddit.com/user/cybercore_sh/"
+    },
+    {
+      "id": "codeberg",
+      "glyph": "CB",
+      "label": "Codeberg",
+      "handle": "darkstardevx",
+      "url": "https://codeberg.org/darkstardevx"
+    }
+  ],
+  "support": [
+    {
+      "id": "buymeacoffee",
+      "glyph": "BM",
+      "label": "Buy Me a Coffee",
+      "handle": "cybercoretech",
+      "url": "https://buymeacoffee.com/cybercoretech"
+    },
+    {
+      "id": "paypal",
+      "glyph": "PP",
+      "label": "Donate with PayPal",
+      "handle": "elementxdesign",
+      "url": "https://paypal.me/elementxdesign"
+    },
+    {
+      "id": "github-sponsors",
+      "glyph": "GH",
+      "label": "GitHub Sponsors",
+      "handle": "darkstardevx",
+      "url": "https://github.com/sponsors/darkstardevx"
+    }
+  ],
+  "legal": {
+    "license": "MIT",
+    "copyright": "Copyright (c) 2026 Cybercore Tech",
+    "notice": "Independent project / upstream links / no affiliation implied"
+  }
+}
