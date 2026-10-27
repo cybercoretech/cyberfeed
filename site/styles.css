@@ -124,3 +124,11 @@ footer {
 .footer-content { max-width: var(--max); margin: 0 auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
 .thanks-links a { color: var(--cyan); margin: 0 4px; }
 .footer-bottom { max-width: var(--max); margin: 20px auto 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.04); color: var(--white); }
+
+
+cybercore-contact {
+  display: block;
+  max-width: var(--max);
+  margin: 60px auto 0;
+  padding: 0 var(--gutter);
+}
