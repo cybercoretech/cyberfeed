@@ -24,6 +24,7 @@
 | `j` / `Down Arrow` | Move selection down |
 | `k` / `Up Arrow` | Move selection up |
 | `Enter` | Open article in in-TUI reader view |
+| `t` | Open 72+ Cybercore Theme Chooser popup |
 | `o` or `b` | Open article link in external browser |
 | `y` | Copy article link to system clipboard (`arboard`) |
 | `r` | Reload database and refresh article list |

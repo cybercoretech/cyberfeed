@@ -1,554 +1,555 @@
-use crate::config::ThemeName;
-use crate::db::{Article, Database};
-use anyhow::Result;
-use arboard::Clipboard;
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs},
+    Frame, Terminal,
+};
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
+    event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap},
-    Frame, Terminal,
-};
-use std::{io, time::Duration};
+use std::io;
+use crate::config::ThemeName;
+use crate::db::{Database, Article};
+use pulldown_cmark::{Parser, Tag, TagEnd, Event as MarkdownEvent};
 
-pub struct Theme {
-    pub border: Color,
-    pub title: Color,
-    pub tab_active: Color,
-    pub tab_inactive: Color,
-    pub source_tag: Color,
-    pub highlight_bg: Color,
-    pub highlight_fg: Color,
-    pub code_fg: Color,
-    pub code_bg: Color,
-}
-
-impl Theme {
-    pub fn from_name(name: &ThemeName) -> Self {
-        match name {
-            ThemeName::Cyberpunk => Self {
-                border: Color::Cyan,
-                title: Color::Yellow,
-                tab_active: Color::Yellow,
-                tab_inactive: Color::Gray,
-                source_tag: Color::Green,
-                highlight_bg: Color::DarkGray,
-                highlight_fg: Color::White,
-                code_fg: Color::LightMagenta,
-                code_bg: Color::Rgb(20, 20, 35),
-            },
-            ThemeName::Dracula => Self {
-                border: Color::Rgb(189, 147, 249),
-                title: Color::Rgb(255, 121, 198),
-                tab_active: Color::Rgb(255, 121, 198),
-                tab_inactive: Color::Rgb(98, 114, 164),
-                source_tag: Color::Rgb(80, 250, 123),
-                highlight_bg: Color::Rgb(68, 71, 90),
-                highlight_fg: Color::Rgb(248, 248, 242),
-                code_fg: Color::Rgb(139, 233, 253),
-                code_bg: Color::Rgb(40, 42, 54),
-            },
-            ThemeName::Nord => Self {
-                border: Color::Rgb(136, 192, 208),
-                title: Color::Rgb(235, 203, 139),
-                tab_active: Color::Rgb(235, 203, 139),
-                tab_inactive: Color::Rgb(76, 86, 106),
-                source_tag: Color::Rgb(163, 190, 140),
-                highlight_bg: Color::Rgb(67, 76, 94),
-                highlight_fg: Color::Rgb(236, 239, 244),
-                code_fg: Color::Rgb(143, 188, 187),
-                code_bg: Color::Rgb(46, 52, 64),
-            },
-        }
-    }
-}
-
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewMode {
     List,
     Reader,
+    ThemeChooser,
+}
+
+#[derive(Debug, Clone)]
+pub struct ThemeItem {
+    pub id: String,
+    pub name: String,
+    pub family: String,
+    pub primary: Color,
+    pub bg: Color,
+    pub text: Color,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ThemePalette {
+    pub primary: Color,
+    pub secondary: Color,
+    pub highlight: Color,
+    pub background: Color,
+    pub text: Color,
+}
+
+impl ThemePalette {
+    pub fn for_theme(theme: ThemeName) -> Self {
+        match theme {
+            ThemeName::Cyberpunk => Self {
+                primary: Color::Magenta,
+                secondary: Color::Cyan,
+                highlight: Color::Yellow,
+                background: Color::Black,
+                text: Color::White,
+            },
+            ThemeName::Dracula => Self {
+                primary: Color::Rgb(189, 147, 249),
+                secondary: Color::Rgb(139, 233, 253),
+                highlight: Color::Rgb(255, 121, 198),
+                background: Color::Rgb(40, 42, 54),
+                text: Color::Rgb(248, 248, 242),
+            },
+            ThemeName::Nord => Self {
+                primary: Color::Rgb(129, 161, 193),
+                secondary: Color::Rgb(143, 188, 187),
+                highlight: Color::Rgb(235, 203, 139),
+                background: Color::Rgb(46, 52, 64),
+                text: Color::Rgb(216, 222, 233),
+            },
+        }
+    }
+
+    pub fn for_cybercore(t: &ThemeItem) -> Self {
+        Self {
+            primary: t.primary,
+            secondary: t.primary,
+            highlight: t.primary,
+            background: t.bg,
+            text: t.text,
+        }
+    }
+
+    pub fn block_style(&self) -> Style {
+        Style::default().fg(self.primary).bg(self.background)
+    }
 }
 
 pub struct App {
-    pub db: Database,
+    pub theme: ThemeName,
+    pub database: Database,
     pub articles: Vec<Article>,
-    pub state: ListState,
+    pub selected_tab: usize,
+    pub selected_index: usize,
     pub view_mode: ViewMode,
-    pub should_quit: bool,
-    pub status_msg: String,
-    pub tabs: Vec<String>,
-    pub tab_index: usize,
-    pub theme: Theme,
+    pub feed_names: Vec<String>,
+    pub themes: Vec<ThemeItem>,
+    pub selected_theme_index: usize,
+    pub theme_list_offset: usize,
+    pub active_cybercore_theme: Option<ThemeItem>,
 }
 
 impl App {
-    pub fn new(db: Database, theme_name: ThemeName) -> Result<Self> {
-        let articles = db.get_articles()?;
-
-        let mut tabs = vec!["All".to_string()];
-        let mut sources: Vec<String> = articles.iter().map(|a| a.source.clone()).collect();
-        sources.sort();
-        sources.dedup();
-        tabs.extend(sources);
-
-        let mut state = ListState::default();
-        if !articles.is_empty() {
-            state.select(Some(0));
-        }
-
-        Ok(Self {
-            db,
-            articles,
-            state,
+    pub fn new(database: Database, theme: ThemeName) -> anyhow::Result<Self> {
+        let themes = load_cybercore_themes();
+        let mut app = Self {
+            theme,
+            database,
+            articles: Vec::new(),
+            selected_tab: 0,
+            selected_index: 0,
             view_mode: ViewMode::List,
-            should_quit: false,
-            status_msg: "Ready. [Tab] Switch Tab | [Enter] Reader | [o/b] Browser | [q] Quit"
-                .into(),
-            tabs,
-            tab_index: 0,
-            theme: Theme::from_name(&theme_name),
-        })
+            feed_names: Vec::new(),
+            themes,
+            selected_theme_index: 0,
+            theme_list_offset: 0,
+            active_cybercore_theme: None,
+        };
+        app.reload_articles()?;
+        Ok(app)
     }
 
-    pub fn reload(&mut self) {
-        if let Ok(articles) = self.db.get_articles() {
-            self.articles = articles;
-
-            let mut tabs = vec!["All".to_string()];
-            let mut sources: Vec<String> = self.articles.iter().map(|a| a.source.clone()).collect();
-            sources.sort();
-            sources.dedup();
-            tabs.extend(sources);
-
-            if self.tab_index >= tabs.len() {
-                self.tab_index = 0;
+    pub fn reload_articles(&mut self) -> anyhow::Result<()> {
+        self.articles = self.database.get_articles()?;
+        let mut feeds = vec!["All".to_string()];
+        for article in &self.articles {
+            if !feeds.contains(&article.source) {
+                feeds.push(article.source.clone());
             }
-            self.tabs = tabs;
+        }
+        self.feed_names = feeds;
+        if self.selected_tab >= self.feed_names.len() {
+            self.selected_tab = 0;
+        }
+        self.clamp_selection();
+        Ok(())
+    }
 
-            let filtered = self.filtered_indices();
-            if filtered.is_empty() {
-                self.state.select(None);
-            } else if self.state.selected().is_none() {
-                self.state.select(Some(0));
-            }
+    pub fn filtered_articles(&self) -> Vec<&Article> {
+        if self.selected_tab == 0 {
+            self.articles.iter().collect()
+        } else {
+            let feed_name = &self.feed_names[self.selected_tab];
+            self.articles.iter().filter(|a| &a.source == feed_name).collect()
         }
     }
 
-    pub fn filtered_indices(&self) -> Vec<usize> {
-        if self.tab_index == 0 {
-            (0..self.articles.len()).collect()
-        } else if let Some(tab_name) = self.tabs.get(self.tab_index) {
-            self.articles
-                .iter()
-                .enumerate()
-                .filter(|(_, a)| &a.source == tab_name)
-                .map(|(i, _)| i)
-                .collect()
-        } else {
-            (0..self.articles.len()).collect()
+    pub fn clamp_selection(&mut self) {
+        let count = self.filtered_articles().len();
+        if count == 0 {
+            self.selected_index = 0;
+        } else if self.selected_index >= count {
+            self.selected_index = count - 1;
         }
     }
 
     pub fn next_tab(&mut self) {
-        if self.tabs.is_empty() {
-            return;
+        if !self.feed_names.is_empty() {
+            self.selected_tab = (self.selected_tab + 1) % self.feed_names.len();
+            self.selected_index = 0;
         }
-        self.tab_index = (self.tab_index + 1) % self.tabs.len();
-        let filtered_len = self.filtered_indices().len();
-        if filtered_len > 0 {
-            self.state.select(Some(0));
-        } else {
-            self.state.select(None);
-        }
-        self.status_msg = format!("Switched to tab: {}", self.tabs[self.tab_index]);
     }
 
     pub fn prev_tab(&mut self) {
-        if self.tabs.is_empty() {
-            return;
+        if !self.feed_names.is_empty() {
+            if self.selected_tab == 0 {
+                self.selected_tab = self.feed_names.len() - 1;
+            } else {
+                self.selected_tab -= 1;
+            }
+            self.selected_index = 0;
         }
-        if self.tab_index == 0 {
-            self.tab_index = self.tabs.len() - 1;
-        } else {
-            self.tab_index -= 1;
-        }
-        let filtered_len = self.filtered_indices().len();
-        if filtered_len > 0 {
-            self.state.select(Some(0));
-        } else {
-            self.state.select(None);
-        }
-        self.status_msg = format!("Switched to tab: {}", self.tabs[self.tab_index]);
     }
 
-    pub fn next(&mut self) {
-        let filtered = self.filtered_indices();
-        if filtered.is_empty() {
-            return;
+    pub fn next_item(&mut self) {
+        let count = self.filtered_articles().len();
+        if count > 0 && self.selected_index < count - 1 {
+            self.selected_index += 1;
         }
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i >= filtered.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
     }
 
-    pub fn previous(&mut self) {
-        let filtered = self.filtered_indices();
-        if filtered.is_empty() {
-            return;
+    pub fn prev_item(&mut self) {
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
         }
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    filtered.len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
     }
 
-    pub fn copy_link(&mut self) {
-        let filtered = self.filtered_indices();
-        if let Some(idx) = self.state.selected() {
-            if let Some(&article_idx) = filtered.get(idx) {
-                let link = &self.articles[article_idx].link;
-                if let Ok(mut cb) = Clipboard::new() {
-                    if cb.set_text(link.clone()).is_ok() {
-                        self.status_msg = "Link copied to clipboard!".into();
-                        return;
-                    }
-                }
-            }
-        }
-        self.status_msg = "Failed to copy link".into();
-    }
-
-    pub fn open_in_browser(&mut self) {
-        let filtered = self.filtered_indices();
-        if let Some(idx) = self.state.selected() {
-            if let Some(&article_idx) = filtered.get(idx) {
-                let link = &self.articles[article_idx].link;
-                let _ = open::that(link);
-                self.status_msg = format!("Opening in browser: {}", link);
-            }
-        }
+    pub fn selected_article(&self) -> Option<&Article> {
+        let filtered = self.filtered_articles();
+        filtered.get(self.selected_index).copied()
     }
 }
 
-pub async fn run_tui(mut app: App) -> Result<()> {
+fn parse_hex_color(hex: &str) -> Color {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() >= 6 {
+        let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(100);
+        let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(100);
+        let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(100);
+        Color::Rgb(r, g, b)
+    } else {
+        Color::Magenta
+    }
+}
+
+fn load_cybercore_themes() -> Vec<ThemeItem> {
+    let path = "/home/raven/Devspace/Cybercore/framework/cybercore/docs/theme-chooser-data.json";
+    if let Ok(contents) = std::fs::read_to_string(path) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&contents) {
+            if let Some(arr) = v.get("themes").and_then(|t| t.as_array()) {
+                let mut list = Vec::new();
+                for item in arr {
+                    let id = item.get("id").and_then(|s| s.as_str()).unwrap_or("theme").to_string();
+                    let name = item.get("name").and_then(|s| s.as_str()).unwrap_or("Theme").to_string();
+                    let family = item.get("family").and_then(|s| s.as_str()).unwrap_or("general").to_string();
+                    let colors = item.get("colors");
+                    let bg_hex = colors.and_then(|c| c.get("bg")).and_then(|s| s.as_str()).unwrap_or("050710");
+                    let cyan_hex = colors.and_then(|c| c.get("cyan")).and_then(|s| s.as_str()).unwrap_or("22e6ff");
+                    let acid_hex = colors.and_then(|c| c.get("acid_green")).and_then(|s| s.as_str()).unwrap_or("c6ff45");
+                    
+                    list.push(ThemeItem {
+                        id,
+                        name,
+                        family,
+                        primary: parse_hex_color(cyan_hex),
+                        bg: parse_hex_color(bg_hex),
+                        text: parse_hex_color(acid_hex),
+                    });
+                }
+                if !list.is_empty() {
+                    return list;
+                }
+            }
+        }
+    }
+    vec![ThemeItem {
+        id: "cyberpunk-fallback".to_string(),
+        name: "Cyberpunk Fallback".to_string(),
+        family: "fallback".to_string(),
+        primary: Color::Magenta,
+        bg: Color::Black,
+        text: Color::White,
+    }]
+}
+
+fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+    let parser = Parser::new(markdown);
+    
+    let mut current_spans: Vec<Span<'static>> = Vec::new();
+    let mut current_style = Style::default().fg(palette.text);
+    let mut in_code_block = false;
+
+    for event in parser {
+        match event {
+            MarkdownEvent::Start(Tag::Heading { .. }) => {
+                current_style = Style::default().fg(palette.primary).add_modifier(Modifier::BOLD);
+            }
+            MarkdownEvent::End(TagEnd::Heading { .. }) => {
+                lines.push(Line::from(current_spans));
+                current_spans = Vec::new();
+                lines.push(Line::from(""));
+                current_style = Style::default().fg(palette.text);
+            }
+            MarkdownEvent::Start(Tag::CodeBlock(_)) => {
+                in_code_block = true;
+                lines.push(Line::from(current_spans));
+                current_spans = Vec::new();
+                current_style = Style::default().fg(palette.highlight).bg(palette.background);
+            }
+            MarkdownEvent::End(TagEnd::CodeBlock) => {
+                in_code_block = false;
+                lines.push(Line::from(current_spans));
+                current_spans = Vec::new();
+                lines.push(Line::from(""));
+                current_style = Style::default().fg(palette.text);
+            }
+            MarkdownEvent::Start(Tag::Emphasis) => {
+                current_style = current_style.add_modifier(Modifier::ITALIC);
+            }
+            MarkdownEvent::End(TagEnd::Emphasis) => {
+                current_style = current_style.remove_modifier(Modifier::ITALIC);
+            }
+            MarkdownEvent::Start(Tag::Strong) => {
+                current_style = current_style.add_modifier(Modifier::BOLD);
+            }
+            MarkdownEvent::End(TagEnd::Strong) => {
+                current_style = current_style.remove_modifier(Modifier::BOLD);
+            }
+            MarkdownEvent::Text(text) => {
+                let text_str = text.to_string();
+                if in_code_block {
+                    for line_str in text_str.lines() {
+                        lines.push(Line::from(Span::styled(format!("    {}", line_str), current_style)));
+                    }
+                } else {
+                    for line_str in text_str.lines() {
+                        current_spans.push(Span::styled(line_str.to_string(), current_style));
+                    }
+                }
+            }
+            MarkdownEvent::SoftBreak | MarkdownEvent::HardBreak => {
+                if !current_spans.is_empty() {
+                    lines.push(Line::from(current_spans));
+                    current_spans = Vec::new();
+                }
+            }
+            _ => {}
+        }
+    }
+    if !current_spans.is_empty() {
+        lines.push(Line::from(current_spans));
+    }
+    if lines.is_empty() {
+        lines.push(Line::from(Span::styled(markdown.to_string(), Style::default().fg(palette.text))));
+    }
+    lines
+}
+
+pub fn draw_ui(f: &mut Frame, app: &App) {
+    let palette = if let Some(ref ct) = app.active_cybercore_theme {
+        ThemePalette::for_cybercore(ct)
+    } else {
+        ThemePalette::for_theme(app.theme)
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(5),
+            Constraint::Length(2),
+        ])
+        .split(f.area());
+
+    // Tabs
+    let titles: Vec<Line> = app.feed_names.iter().map(|n| Line::from(n.as_str())).collect();
+    let tabs = Tabs::new(titles)
+        .block(Block::default().borders(Borders::ALL).title(" Feeds ").style(palette.block_style()))
+        .select(app.selected_tab)
+        .style(Style::default().fg(palette.text))
+        .highlight_style(Style::default().fg(palette.highlight).add_modifier(Modifier::BOLD));
+    f.render_widget(tabs, chunks[0]);
+
+    // Content view
+    match app.view_mode {
+        ViewMode::List => {
+            let filtered = app.filtered_articles();
+            let items: Vec<ListItem> = filtered
+                .iter()
+                .enumerate()
+                .map(|(i, article)| {
+                    let prefix = if i == app.selected_index { "> " } else { "  " };
+                    let content = format!("{}{}[{}] {}", prefix, if article.read { "" } else { "● " }, article.source, article.title);
+                    let style = if i == app.selected_index {
+                        Style::default().fg(palette.highlight).add_modifier(Modifier::BOLD)
+                    } else if article.read {
+                        Style::default().fg(Color::DarkGray)
+                    } else {
+                        Style::default().fg(palette.text)
+                    };
+                    ListItem::new(content).style(style)
+                })
+                .collect();
+
+            let list = List::new(items)
+                .block(Block::default().borders(Borders::ALL).title(" Articles ").style(palette.block_style()));
+            f.render_widget(list, chunks[1]);
+        }
+        ViewMode::Reader | ViewMode::ThemeChooser => {
+            let content_lines = if let Some(article) = app.selected_article() {
+                let raw_md = format!("# {}\n\n**Source:** {}\n**Link:** {}\n\n---\n\n{}", article.title, article.source, article.link, article.content);
+                render_markdown_highlighted(&raw_md, &palette)
+            } else {
+                vec![Line::from("No article selected.")]
+            };
+
+            let paragraph = Paragraph::new(content_lines)
+                .style(Style::default().fg(palette.text).bg(palette.background))
+                .block(Block::default().borders(Borders::ALL).title(" Reader (Syntax Highlighted) ").style(palette.block_style()))
+                .wrap(ratatui::widgets::Wrap { trim: false });
+            f.render_widget(paragraph, chunks[1]);
+        }
+    }
+
+    // Status bar
+    let status_text = match app.view_mode {
+        ViewMode::List | ViewMode::ThemeChooser => " [Tab] Feed | [j/k] Nav | [Enter] Read | [t] Cybercore Themes (72+) | [o] Browser | [y] Copy | [r] Refresh | [q] Quit ",
+        ViewMode::Reader => " [Esc/q] Back | [t] Cybercore Themes (72+) | [o] Browser | [y] Copy ",
+    };
+    let status = Paragraph::new(status_text)
+        .style(Style::default().fg(palette.highlight).bg(palette.background));
+    f.render_widget(status, chunks[2]);
+
+    // Popup Theme Chooser
+    if app.view_mode == ViewMode::ThemeChooser {
+        let area = centered_rect(70, 75, f.area());
+        f.render_widget(Clear, area);
+
+        let height = area.height.saturating_sub(2) as usize;
+        let start = app.theme_list_offset;
+        let end = std::cmp::min(start + height, app.themes.len());
+
+        let items: Vec<ListItem> = app.themes[start..end]
+            .iter()
+            .enumerate()
+            .map(|(idx, t)| {
+                let actual_idx = start + idx;
+                let prefix = if actual_idx == app.selected_theme_index { "> " } else { "  " };
+                let content = format!("{}{}: {} [{}]", prefix, t.id, t.name, t.family);
+                let style = if actual_idx == app.selected_theme_index {
+                    Style::default().fg(palette.highlight).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(palette.text)
+                };
+                ListItem::new(content).style(style)
+            })
+            .collect();
+
+        let title = format!(" Select Cybercore Theme ({}/{}): [j/k] Nav, [Enter] Apply, [Esc] Close ", app.selected_theme_index + 1, app.themes.len());
+        let theme_list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title(title).style(palette.block_style()));
+        f.render_widget(theme_list, area);
+    }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
+}
+
+pub async fn run_tui(mut app: App) -> anyhow::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    loop {
-        terminal.draw(|f| render_ui(f, &mut app))?;
+    let res = (|| -> anyhow::Result<()> {
+        loop {
+            terminal.draw(|f| draw_ui(f, &app))?;
 
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
+            if event::poll(std::time::Duration::from_millis(100))? {
+                if let Event::Key(key) = event::read()? {
                     match app.view_mode {
-                        ViewMode::List => {
-                            match key.code {
-                                KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
-                                KeyCode::Char('j') | KeyCode::Down => app.next(),
-                                KeyCode::Char('k') | KeyCode::Up => app.previous(),
-                                KeyCode::Tab => app.next_tab(),
-                                KeyCode::BackTab => app.prev_tab(),
-                                KeyCode::Right => app.next_tab(),
-                                KeyCode::Left => app.prev_tab(),
-                                KeyCode::Enter => {
-                                    if !app.filtered_indices().is_empty() {
-                                        app.view_mode = ViewMode::Reader;
-                                        app.status_msg = "Reading in TUI. Press [Esc] to return, [o] for browser.".into();
+                        ViewMode::List => match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc => break,
+                            KeyCode::Tab | KeyCode::Right => app.next_tab(),
+                            KeyCode::BackTab | KeyCode::Left => app.prev_tab(),
+                            KeyCode::Char('j') | KeyCode::Down => app.next_item(),
+                            KeyCode::Char('k') | KeyCode::Up => app.prev_item(),
+                            KeyCode::Enter => {
+                                if let Some(article) = app.selected_article() {
+                                    let _ = app.database.toggle_read(article.id, true);
+                                    let _ = app.reload_articles();
+                                    app.view_mode = ViewMode::Reader;
+                                }
+                            }
+                            KeyCode::Char('r') => {
+                                let _ = app.reload_articles();
+                            }
+                            KeyCode::Char('t') => {
+                                app.view_mode = ViewMode::ThemeChooser;
+                            }
+                            KeyCode::Char('o') | KeyCode::Char('b') => {
+                                if let Some(article) = app.selected_article() {
+                                    let _ = open::that(&article.link);
+                                }
+                            }
+                            KeyCode::Char('y') => {
+                                if let Some(article) = app.selected_article() {
+                                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                                        let _ = clipboard.set_text(article.link.clone());
                                     }
                                 }
-                                KeyCode::Char('o') | KeyCode::Char('b') => app.open_in_browser(),
-                                KeyCode::Char('y') => app.copy_link(),
-                                KeyCode::Char('r') => {
-                                    app.reload();
-                                    app.status_msg = "Reloaded database articles".into();
-                                }
-                                _ => {}
                             }
-                        }
+                            _ => {}
+                        },
                         ViewMode::Reader => match key.code {
-                            KeyCode::Char('q') | KeyCode::Esc | KeyCode::Backspace => {
+                            KeyCode::Char('q') | KeyCode::Esc => {
                                 app.view_mode = ViewMode::List;
-                                app.status_msg = "Returned to article list.".into();
                             }
-                            KeyCode::Char('o') | KeyCode::Char('b') => app.open_in_browser(),
-                            KeyCode::Char('y') => app.copy_link(),
+                            KeyCode::Char('t') => {
+                                app.view_mode = ViewMode::ThemeChooser;
+                            }
+                            KeyCode::Char('o') | KeyCode::Char('b') => {
+                                if let Some(article) = app.selected_article() {
+                                    let _ = open::that(&article.link);
+                                }
+                            }
+                            KeyCode::Char('y') => {
+                                if let Some(article) = app.selected_article() {
+                                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                                        let _ = clipboard.set_text(article.link.clone());
+                                    }
+                                }
+                            }
+                            _ => {}
+                        },
+                        ViewMode::ThemeChooser => match key.code {
+                            KeyCode::Esc => {
+                                app.view_mode = ViewMode::List;
+                            }
+                            KeyCode::Char('j') | KeyCode::Down => {
+                                if !app.themes.is_empty() && app.selected_theme_index < app.themes.len() - 1 {
+                                    app.selected_theme_index += 1;
+                                    let visible_height = 20;
+                                    if app.selected_theme_index >= app.theme_list_offset + visible_height {
+                                        app.theme_list_offset = app.selected_theme_index - visible_height + 1;
+                                    }
+                                }
+                            }
+                            KeyCode::Char('k') | KeyCode::Up => {
+                                if app.selected_theme_index > 0 {
+                                    app.selected_theme_index -= 1;
+                                    if app.selected_theme_index < app.theme_list_offset {
+                                        app.theme_list_offset = app.selected_theme_index;
+                                    }
+                                }
+                            }
+                            KeyCode::Enter => {
+                                if let Some(t) = app.themes.get(app.selected_theme_index).cloned() {
+                                    app.active_cybercore_theme = Some(t);
+                                }
+                                app.view_mode = ViewMode::List;
+                            }
                             _ => {}
                         },
                     }
                 }
             }
         }
-
-        if app.should_quit {
-            break;
-        }
-    }
+        Ok(())
+    })();
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
+
+    res?;
     Ok(())
-}
-
-fn format_content_with_highlighting<'a>(content: &'a str, theme: &Theme) -> Vec<Line<'a>> {
-    let mut lines = Vec::new();
-    let mut in_code_block = false;
-
-    for raw_line in content.lines() {
-        let line_str = raw_line.trim_end();
-
-        if line_str.starts_with("```") {
-            in_code_block = !in_code_block;
-            lines.push(Line::from(Span::styled(
-                "--------------------------------------------------------------------------------",
-                Style::default().fg(theme.border),
-            )));
-            continue;
-        }
-
-        if in_code_block {
-            lines.push(Line::from(Span::styled(
-                format!("  {}", line_str),
-                Style::default().fg(theme.code_fg).bg(theme.code_bg),
-            )));
-        } else if line_str.starts_with('#') {
-            lines.push(Line::from(Span::styled(
-                line_str,
-                Style::default()
-                    .fg(theme.title)
-                    .add_modifier(Modifier::BOLD),
-            )));
-        } else {
-            lines.push(Line::from(Span::raw(line_str)));
-        }
-    }
-    lines
-}
-
-fn render_ui(f: &mut Frame, app: &mut App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Title
-            Constraint::Length(3), // Tabs
-            Constraint::Min(10),   // Main content
-            Constraint::Length(3), // Footer
-        ])
-        .split(f.area());
-
-    let theme = &app.theme;
-
-    // Title Block
-    let title_block = Block::default()
-        .borders(Borders::ALL)
-        .style(Style::default().fg(theme.border));
-    let title = Paragraph::new(Span::styled(
-        " 📰 CYBERFEED RSS READER (TUI) ",
-        Style::default()
-            .add_modifier(Modifier::BOLD)
-            .fg(theme.title),
-    ))
-    .block(title_block);
-    f.render_widget(title, chunks[0]);
-
-    // Tabs Widget
-    let tab_titles: Vec<Line> = app
-        .tabs
-        .iter()
-        .enumerate()
-        .map(|(i, t)| {
-            let style = if i == app.tab_index {
-                Style::default()
-                    .fg(theme.tab_active)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(theme.tab_inactive)
-            };
-            Line::from(Span::styled(format!(" {} ", t), style))
-        })
-        .collect();
-
-    let tabs = Tabs::new(tab_titles)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Feed Families ")
-                .border_style(Style::default().fg(theme.border)),
-        )
-        .highlight_style(
-            Style::default()
-                .fg(theme.tab_active)
-                .add_modifier(Modifier::BOLD),
-        );
-    f.render_widget(tabs, chunks[1]);
-
-    match app.view_mode {
-        ViewMode::List => {
-            let main_chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
-                .split(chunks[2]);
-
-            let filtered = app.filtered_indices();
-
-            let list_items: Vec<ListItem> = filtered
-                .iter()
-                .map(|&article_idx| {
-                    let item = &app.articles[article_idx];
-                    let content = vec![Line::from(vec![
-                        Span::styled(
-                            format!("[{}] ", item.source),
-                            Style::default().fg(theme.source_tag),
-                        ),
-                        Span::raw(&item.title),
-                    ])];
-                    ListItem::new(content)
-                })
-                .collect();
-
-            let list = List::new(list_items)
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(format!(" Articles ({}) ", filtered.len()))
-                        .border_style(Style::default().fg(theme.border)),
-                )
-                .highlight_style(
-                    Style::default()
-                        .bg(theme.highlight_bg)
-                        .fg(theme.highlight_fg)
-                        .add_modifier(Modifier::BOLD),
-                )
-                .highlight_symbol("> ");
-
-            f.render_stateful_widget(list, main_chunks[0], &mut app.state);
-
-            let preview_lines = match app.state.selected() {
-                Some(i) => {
-                    if let Some(&article_idx) = filtered.get(i) {
-                        let item = &app.articles[article_idx];
-                        let mut lines = vec![
-                            Line::from(vec![
-                                Span::styled(
-                                    "Title: ",
-                                    Style::default().add_modifier(Modifier::BOLD),
-                                ),
-                                Span::raw(&item.title),
-                            ]),
-                            Line::from(vec![
-                                Span::styled(
-                                    "Source: ",
-                                    Style::default().add_modifier(Modifier::BOLD),
-                                ),
-                                Span::styled(&item.source, Style::default().fg(theme.source_tag)),
-                            ]),
-                            Line::from(vec![
-                                Span::styled(
-                                    "Link: ",
-                                    Style::default().add_modifier(Modifier::BOLD),
-                                ),
-                                Span::raw(&item.link),
-                            ]),
-                            Line::from(""),
-                        ];
-                        lines.extend(format_content_with_highlighting(&item.content, theme));
-                        lines
-                    } else {
-                        vec![Line::from("No article selected.")]
-                    }
-                }
-                None => vec![Line::from(
-                    "No articles available in this tab. Press [r] to reload.",
-                )],
-            };
-
-            let preview = Paragraph::new(preview_lines)
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" Quick Preview ")
-                        .border_style(Style::default().fg(theme.border)),
-                )
-                .wrap(Wrap { trim: true });
-            f.render_widget(preview, main_chunks[1]);
-        }
-        ViewMode::Reader => {
-            let filtered = app.filtered_indices();
-            let reader_lines = match app.state.selected() {
-                Some(i) => {
-                    if let Some(&article_idx) = filtered.get(i) {
-                        let item = &app.articles[article_idx];
-                        let mut lines = vec![
-                            Line::from(Span::styled(format!("TITLE: {}", item.title), Style::default().fg(theme.title).add_modifier(Modifier::BOLD))),
-                            Line::from(Span::styled(format!("SOURCE: {}", item.source), Style::default().fg(theme.source_tag))),
-                            Line::from(Span::raw(format!("LINK: {}", item.link))),
-                            Line::from(Span::styled("--------------------------------------------------------------------------------", Style::default().fg(theme.border))),
-                            Line::from(""),
-                        ];
-                        lines.extend(format_content_with_highlighting(&item.content, theme));
-                        lines
-                    } else {
-                        vec![Line::from("No article selected.")]
-                    }
-                }
-                None => vec![Line::from("No article selected.")],
-            };
-
-            let reader_pane = Paragraph::new(reader_lines)
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" 📖 In-TUI Reader View (Press Esc to exit) ")
-                        .border_style(Style::default().fg(theme.border)),
-                )
-                .wrap(Wrap { trim: true });
-            f.render_widget(reader_pane, chunks[2]);
-        }
-    }
-
-    // Status / Keybindings Footer
-    let footer_block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(theme.border));
-    let footer_text = match app.view_mode {
-        ViewMode::List => {
-            format!(
-                " [Tab/Arrow] Switch Tab | [j/k] Nav | [Enter] Reader | [o/b] Browser | [q] Quit | Status: {}",
-                app.status_msg
-            )
-        }
-        ViewMode::Reader => {
-            format!(
-                " [Esc] Back to List | [o/b] Open in Browser | [y] Copy Link | Status: {}",
-                app.status_msg
-            )
-        }
-    };
-    let footer = Paragraph::new(Span::styled(footer_text, Style::default().fg(theme.title)))
-        .block(footer_block);
-    f.render_widget(footer, chunks[3]);
 }
