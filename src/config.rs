@@ -40,7 +40,7 @@ impl Config {
 
         if config_path.exists() {
             if let Ok(contents) = std::fs::read_to_string(&config_path) {
-                if let Ok(config) = serde_yaml::from_str(&contents) {
+                if let Ok(config) = serde_saphyr::from_str(&contents) {
                     return config;
                 }
             }
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn omitted_yaml_fields_use_documented_defaults() {
-        let config: Config = serde_yaml::from_str("{}").unwrap();
+        let config: Config = serde_saphyr::from_str("{}").unwrap();
         assert_eq!(config.theme, ThemeName::Cyberpunk);
         assert_eq!(config.refresh_interval_secs, 300);
         assert!(config.feeds.is_empty());
@@ -108,14 +108,14 @@ mod tests {
             ("theme: dracula", ThemeName::Dracula),
             ("theme: nord", ThemeName::Nord),
         ] {
-            let config: Config = serde_yaml::from_str(yaml).unwrap();
+            let config: Config = serde_saphyr::from_str(yaml).unwrap();
             assert_eq!(config.theme, expected);
         }
     }
 
     #[test]
     fn rejects_unknown_theme_names() {
-        let result = serde_yaml::from_str::<Config>("theme: unknown");
+        let result = serde_saphyr::from_str::<Config>("theme: unknown");
         assert!(result.is_err());
     }
 }

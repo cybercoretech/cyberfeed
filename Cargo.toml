@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # TUI Framework & Utilities
-ratatui = "0.29"
+ratatui = { version = "0.30", features = ["crossterm_0_28"] }
 crossterm = "0.28"
 arboard = "3.4"
 
@@ -20,7 +20,7 @@ atom_syndication = "0.12"
 # Storage & Configuration (fts5 included automatically via bundled)
 rusqlite = { version = "0.31", features = ["bundled"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.9"
+serde-saphyr = "2"
 serde_json = "1.0"
 dirs = "5.0"
 
