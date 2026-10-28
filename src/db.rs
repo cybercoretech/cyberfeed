@@ -17,6 +17,23 @@ pub struct Database {
 }
 
 impl Database {
+    #[cfg(test)]
+    fn in_memory() -> Result<Self> {
+        let conn = Connection::open_in_memory()?;
+        conn.execute_batch(
+            "CREATE TABLE articles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                source TEXT NOT NULL DEFAULT 'Feed',
+                content TEXT NOT NULL DEFAULT '',
+                link TEXT UNIQUE NOT NULL,
+                read INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );",
+        )?;
+        Ok(Self { conn })
+    }
+
     pub fn init() -> Result<Self> {
         let mut db_path = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("~/.local/share"));
         db_path.push("cyberfeed");
@@ -96,5 +113,80 @@ impl Database {
             params![if read { 1 } else { 0 }, id],
         )?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_db() -> Database {
+        Database::in_memory().expect("create in-memory database")
+    }
+
+    #[test]
+    fn inserts_and_retrieves_article() {
+        let db = test_db();
+        db.insert_article(
+            "Test title",
+            "Test source",
+            "Test content",
+            "https://example.com/1",
+        )
+        .unwrap();
+
+        let articles = db.get_articles().unwrap();
+        assert_eq!(articles.len(), 1);
+        assert_eq!(articles[0].title, "Test title");
+        assert_eq!(articles[0].source, "Test source");
+        assert_eq!(articles[0].content, "Test content");
+        assert_eq!(articles[0].link, "https://example.com/1");
+        assert!(!articles[0].read);
+    }
+
+    #[test]
+    fn ignores_duplicate_links() {
+        let db = test_db();
+        db.insert_article("Original", "Source A", "", "https://example.com/same")
+            .unwrap();
+        db.insert_article("Duplicate", "Source B", "", "https://example.com/same")
+            .unwrap();
+
+        let articles = db.get_articles().unwrap();
+        assert_eq!(articles.len(), 1);
+        assert_eq!(articles[0].title, "Original");
+    }
+
+    #[test]
+    fn toggles_read_state() {
+        let db = test_db();
+        db.insert_article("Test", "Source", "", "https://example.com/read")
+            .unwrap();
+
+        let id = db.get_articles().unwrap()[0].id;
+        db.toggle_read(id, true).unwrap();
+        assert!(db.get_articles().unwrap()[0].read);
+
+        db.toggle_read(id, false).unwrap();
+        assert!(!db.get_articles().unwrap()[0].read);
+    }
+
+    #[test]
+    fn returns_at_most_100_articles_newest_first() {
+        let db = test_db();
+        for i in 0..105 {
+            db.insert_article(
+                &format!("Article {i}"),
+                "Test",
+                "",
+                &format!("https://example.com/{i}"),
+            )
+            .unwrap();
+        }
+
+        let articles = db.get_articles().unwrap();
+        assert_eq!(articles.len(), 100);
+        assert_eq!(articles[0].title, "Article 104");
+        assert_eq!(articles[99].title, "Article 5");
     }
 }

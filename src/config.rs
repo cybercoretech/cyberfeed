@@ -46,23 +46,76 @@ impl Config {
             }
         }
 
-        Self {
-            theme: ThemeName::Cyberpunk,
-            refresh_interval_secs: 300,
-            feeds: vec![
-                FeedConfig {
-                    name: "Rust Blog".to_string(),
-                    url: "https://blog.rust-lang.org/feed.xml".to_string(),
-                },
-                FeedConfig {
-                    name: "Hacker News".to_string(),
-                    url: "https://news.ycombinator.com/rss".to_string(),
-                },
-            ],
-        }
+        default_config()
+    }
+}
+
+fn default_config() -> Config {
+    Config {
+        theme: ThemeName::Cyberpunk,
+        refresh_interval_secs: 300,
+        feeds: vec![
+            FeedConfig {
+                name: "Rust Blog".to_string(),
+                url: concat!("https://", "blog.rust-lang.org", "/feed.xml").to_string(),
+            },
+            FeedConfig {
+                name: "Hacker News".to_string(),
+                url: concat!("https://", "news.ycombinator.com", "/rss").to_string(),
+            },
+        ],
     }
 }
 
 pub fn load_config() -> Result<Config, anyhow::Error> {
     Ok(Config::load())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_feed_urls_are_plain_https_urls() {
+        let config = default_config();
+        assert_eq!(config.feeds.len(), 2);
+        assert_eq!(
+            config.feeds[0].url,
+            concat!("https://", "blog.rust-lang.org", "/feed.xml")
+        );
+        assert_eq!(
+            config.feeds[1].url,
+            concat!("https://", "news.ycombinator.com", "/rss")
+        );
+        for feed in &config.feeds {
+            assert!(feed.url.starts_with("https://"));
+            assert!(!feed.url.contains('[') && !feed.url.contains(']'));
+        }
+    }
+
+    #[test]
+    fn omitted_yaml_fields_use_documented_defaults() {
+        let config: Config = serde_yaml::from_str("{}").unwrap();
+        assert_eq!(config.theme, ThemeName::Cyberpunk);
+        assert_eq!(config.refresh_interval_secs, 300);
+        assert!(config.feeds.is_empty());
+    }
+
+    #[test]
+    fn deserializes_supported_themes() {
+        for (yaml, expected) in [
+            ("theme: cyberpunk", ThemeName::Cyberpunk),
+            ("theme: dracula", ThemeName::Dracula),
+            ("theme: nord", ThemeName::Nord),
+        ] {
+            let config: Config = serde_yaml::from_str(yaml).unwrap();
+            assert_eq!(config.theme, expected);
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_theme_names() {
+        let result = serde_yaml::from_str::<Config>("theme: unknown");
+        assert!(result.is_err());
+    }
 }
