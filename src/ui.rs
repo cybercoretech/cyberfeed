@@ -378,10 +378,11 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
                 .style(palette.block_style()),
         )
         .select(app.selected_tab)
-        .style(Style::default().fg(palette.text))
+        .style(Style::default().fg(palette.text).bg(palette.background))
         .highlight_style(
             Style::default()
-                .fg(palette.highlight)
+                .fg(palette.background)
+                .bg(palette.highlight)
                 .add_modifier(Modifier::BOLD),
         );
     f.render_widget(tabs, chunks[0]);
