@@ -5,7 +5,6 @@ import qs.Ui
 
 Panel {
     id: root
-    moduleName: "cybercore.cyberfeed"
     manageIpc: false
 
     function open() { root.controller.show() }

@@ -11,7 +11,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
 use std::io;
@@ -25,12 +25,15 @@ pub enum ViewMode {
 
 #[derive(Debug, Clone)]
 pub struct ThemeItem {
+    #[allow(dead_code)]
     pub id: String,
     pub name: String,
     pub family: String,
     pub primary: Color,
     pub bg: Color,
     pub text: Color,
+    pub hot_pink: Color,
+    pub purple: Color,
 }
 
 #[allow(dead_code)]
@@ -240,6 +243,14 @@ fn load_cybercore_themes() -> Vec<ThemeItem> {
                         .and_then(|c| c.get("acid_green"))
                         .and_then(|s| s.as_str())
                         .unwrap_or("c6ff45");
+                    let hot_pink_hex = colors
+                        .and_then(|c| c.get("hot_pink"))
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("ff4fc3");
+                    let purple_hex = colors
+                        .and_then(|c| c.get("purple"))
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("a77bff");
 
                     list.push(ThemeItem {
                         id,
@@ -248,8 +259,16 @@ fn load_cybercore_themes() -> Vec<ThemeItem> {
                         primary: parse_hex_color(cyan_hex),
                         bg: parse_hex_color(bg_hex),
                         text: parse_hex_color(acid_hex),
+                        hot_pink: parse_hex_color(hot_pink_hex),
+                        purple: parse_hex_color(purple_hex),
                     });
                 }
+                list.sort_by(|a, b| {
+                    a.family
+                        .to_lowercase()
+                        .cmp(&b.family.to_lowercase())
+                        .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+                });
                 if !list.is_empty() {
                     return list;
                 }
@@ -263,6 +282,8 @@ fn load_cybercore_themes() -> Vec<ThemeItem> {
         primary: Color::Magenta,
         bg: Color::Black,
         text: Color::White,
+        hot_pink: Color::Magenta,
+        purple: Color::Blue,
     }]
 }
 
@@ -348,6 +369,66 @@ fn render_markdown_highlighted(markdown: &str, palette: &ThemePalette) -> Vec<Li
     lines
 }
 
+fn feed_tab_rows(names: &[String], width: usize) -> Vec<Vec<usize>> {
+    let width = width.max(1);
+    let mut rows: Vec<Vec<usize>> = Vec::new();
+    let mut row: Vec<usize> = Vec::new();
+    let mut used = 0usize;
+
+    for (index, name) in names.iter().enumerate() {
+        let item_width = name.chars().count().saturating_add(2);
+        let needed = item_width + if row.is_empty() { 0 } else { 3 };
+
+        if !row.is_empty() && used.saturating_add(needed) > width {
+            rows.push(std::mem::take(&mut row));
+            used = 0;
+        }
+
+        if !row.is_empty() {
+            used = used.saturating_add(3); // " | "
+        }
+        row.push(index);
+        used = used.saturating_add(item_width);
+    }
+
+    if !row.is_empty() {
+        rows.push(row);
+    }
+    if rows.is_empty() {
+        rows.push(Vec::new());
+    }
+    rows
+}
+
+fn styled_feed_tab_lines(
+    names: &[String],
+    selected: usize,
+    width: usize,
+    palette: &ThemePalette,
+) -> Vec<Line<'static>> {
+    feed_tab_rows(names, width)
+        .into_iter()
+        .map(|row| {
+            let mut spans = Vec::new();
+            for (position, index) in row.iter().enumerate() {
+                if position > 0 {
+                    spans.push(Span::raw(" | "));
+                }
+                let style = if *index == selected {
+                    Style::default()
+                        .fg(palette.background)
+                        .bg(palette.highlight)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(palette.text)
+                };
+                spans.push(Span::styled(format!(" {} ", names[*index]), style));
+            }
+            Line::from(spans)
+        })
+        .collect()
+}
+
 pub fn draw_ui(f: &mut Frame, app: &App) {
     let palette = if let Some(ref ct) = app.active_cybercore_theme {
         ThemePalette::for_cybercore(ct)
@@ -355,35 +436,29 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
         ThemePalette::for_theme(app.theme)
     };
 
+    // Calculate tab rows from the current terminal width.
+    let tab_width = f.area().width.saturating_sub(2).max(1) as usize;
+    let tab_rows = feed_tab_rows(&app.feed_names, tab_width);
+    let feed_height = (tab_rows.len() as u16).saturating_add(2);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(feed_height),
             Constraint::Min(5),
             Constraint::Length(2),
         ])
         .split(f.area());
 
-    // Tabs
-    let titles: Vec<Line> = app
-        .feed_names
-        .iter()
-        .map(|n| Line::from(n.as_str()))
-        .collect();
-    let tabs = Tabs::new(titles)
+    // Render each feed on a row that fits the available width.
+    let tab_lines = styled_feed_tab_lines(&app.feed_names, app.selected_tab, tab_width, &palette);
+    let tabs = Paragraph::new(tab_lines)
+        .style(Style::default().fg(palette.text).bg(palette.background))
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Feeds ")
                 .style(palette.block_style()),
-        )
-        .select(app.selected_tab)
-        .style(Style::default().fg(palette.text).bg(palette.background))
-        .highlight_style(
-            Style::default()
-                .fg(palette.background)
-                .bg(palette.highlight)
-                .add_modifier(Modifier::BOLD),
         );
     f.render_widget(tabs, chunks[0]);
 
@@ -466,30 +541,62 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
         f.render_widget(Clear, area);
 
         let height = area.height.saturating_sub(2) as usize;
-        let start = app.theme_list_offset;
-        let end = std::cmp::min(start + height, app.themes.len());
+        let start = app.theme_list_offset.min(app.themes.len());
+        let mut items: Vec<ListItem> = Vec::new();
+        let mut previous_family = String::new();
+        let mut actual_idx = start;
 
-        let items: Vec<ListItem> = app.themes[start..end]
-            .iter()
-            .enumerate()
-            .map(|(idx, t)| {
-                let actual_idx = start + idx;
-                let prefix = if actual_idx == app.selected_theme_index {
-                    "> "
+        while actual_idx < app.themes.len() && items.len() < height {
+            let t = &app.themes[actual_idx];
+
+            if previous_family != t.family {
+                if items.len() >= height {
+                    break;
+                }
+                items.push(
+                    ListItem::new(format!(" {}", display_theme_label(&t.family))).style(
+                        Style::default()
+                            .fg(palette.primary)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                );
+                previous_family = t.family.clone();
+            }
+
+            if items.len() >= height {
+                break;
+            }
+
+            let prefix = if actual_idx == app.selected_theme_index {
+                "> "
+            } else {
+                "  "
+            };
+            let name = display_theme_label(&t.name);
+            let name_column = format!("{:<30}", name);
+            let style = if actual_idx == app.selected_theme_index {
+                Style::default()
+                    .fg(palette.highlight)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(palette.text)
+            };
+
+            let content = ratatui::text::Line::from(vec![
+                ratatui::text::Span::styled(format!("{}{}", prefix, name_column), style),
+                ratatui::text::Span::raw(if t.name.contains("Red Quarantine") {
+                    "     "
                 } else {
-                    "  "
-                };
-                let content = format!("{}{}: {} [{}]", prefix, t.id, t.name, t.family);
-                let style = if actual_idx == app.selected_theme_index {
-                    Style::default()
-                        .fg(palette.highlight)
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(palette.text)
-                };
-                ListItem::new(content).style(style)
-            })
-            .collect();
+                    "        "
+                }),
+                ratatui::text::Span::styled("■", Style::default().fg(t.primary)),
+                ratatui::text::Span::styled("■", Style::default().fg(t.hot_pink)),
+                ratatui::text::Span::styled("■", Style::default().fg(t.text)),
+                ratatui::text::Span::styled("■", Style::default().fg(t.purple)),
+            ]);
+            items.push(ListItem::new(content));
+            actual_idx += 1;
+        }
 
         let title = format!(
             " Select Cybercore Theme ({}/{}): [j/k] Nav, [Enter] Apply, [Esc] Close ",
@@ -504,6 +611,23 @@ pub fn draw_ui(f: &mut Frame, app: &App) {
         );
         f.render_widget(theme_list, area);
     }
+}
+
+fn display_theme_label(value: &str) -> String {
+    value
+        .replace('-', " ")
+        .split_whitespace()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => {
+                    first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+                }
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

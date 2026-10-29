@@ -86,7 +86,7 @@ impl Database {
 
     pub fn get_articles(&self) -> Result<Vec<Article>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, title, source, content, link, read FROM articles ORDER BY id DESC LIMIT 100",
+            "SELECT id, title, source, content, link, read FROM articles ORDER BY id DESC",
         )?;
         let rows = stmt.query_map([], |row| {
             Ok(Article {
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn returns_at_most_100_articles_newest_first() {
+    fn returns_all_articles_newest_first() {
         let db = test_db();
         for i in 0..105 {
             db.insert_article(
@@ -185,8 +185,8 @@ mod tests {
         }
 
         let articles = db.get_articles().unwrap();
-        assert_eq!(articles.len(), 100);
+        assert_eq!(articles.len(), 105);
         assert_eq!(articles[0].title, "Article 104");
-        assert_eq!(articles[99].title, "Article 5");
+        assert_eq!(articles[104].title, "Article 0");
     }
 }

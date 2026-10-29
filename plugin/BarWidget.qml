@@ -7,12 +7,11 @@ Item {
     id: root
 
     property var bar: null
-    moduleName: "cybercore.cyberfeed"
 
     readonly property string barIcon: "📰"
 
     function launch() {
-        Quickshell.execDetached(["ghostty", "-e", "/home/raven/Devspace/Cybercore/tooling/cyberfeed/target/release/cyberfeed"])
+        Quickshell.execDetached(["ghostty", "-e", "/home/raven/.cargo-target/release/cyberfeed"])
     }
 
     implicitWidth: button.implicitWidth
