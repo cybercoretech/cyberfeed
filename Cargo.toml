@@ -18,7 +18,7 @@ rss = "2.0"
 atom_syndication = "0.12"
 
 # Storage & Configuration (fts5 included automatically via bundled)
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.43", features = ["bundled"] }
 serde = { version = "1.0", features = ["derive"] }
 serde-saphyr = "2"
 serde_json = "1.0"
@@ -28,4 +28,4 @@ dirs = "5.0"
 anyhow = "1.0"
 open = "5.3"
 chrono = { version = "0.4", features = ["serde"] }
-pulldown-cmark = "0.13.5"
+pulldown-cmark = "0.13.6"
